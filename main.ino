@@ -22,21 +22,20 @@ alarm setzen auf letzes up oderd own??
 
 */
 
-//motorboard
+//motorboard connection A
 const int
 PWM_A   = 3,
 DIR_A   = 12,
 BRAKE_A = 9,
 SNS_A   = A0;
 
-//button
+//button for manual motor control
 const int buttonPin = 2;     // the number of the pushbutton pin
 int buttonState = 0;  
 boolean manualMode = false;  
 
-//
 int direction;
-
+// when the program is started it assumes the door is down
 int STATE = DOWN;
 uint8_t time[8];
 char recv[BUFF_MAX];
@@ -45,10 +44,10 @@ unsigned long prev, interval = 5000;
 boolean actState;
 
 //the time settings for up and down
-int goUpHour = 8;
+int goUpHour = 6;
 int goUpMin  = 00;
-int goDownHour = 17;
-int goDownMin  = 02;
+int goDownHour = 20;
+int goDownMin  = 30;
 
 //the calculated up and down times f.e. 887 ist z.B. 887 = 14(h) * 60 + 47(min) = 14:47
 int goUpTime;
@@ -84,7 +83,7 @@ void setup()
   goUpTime = goUpHour * 60 + goUpMin;
   goDownTime = goDownHour * 60 + goDownMin;
 
-//assume we are always down on start so last direction was d
+  //assume we are always down on start so last direction was d
   direction = d;
 
 }
@@ -131,7 +130,7 @@ void loop()
             manualMode = false;
             direction = u;
           } else { //STATE ist DOWN
-            //es ist unten weil wir overrided haben also alles gut
+            //door is down because we did override ok.
           }
         
         } else {
@@ -194,10 +193,10 @@ void loop()
   }
 
 /*
-
+//if we want to set the time to the clock uncomment the following
   if (Serial.available() > 0) {
     in = Serial.read();
-Serial.println(in);
+    Serial.println(in);
     if ((in == 10 || in == 13) && (recv_size > 0)) {
       Serial.println("parse");
       parse_cmd(recv, recv_size);
@@ -222,6 +221,7 @@ Serial.println(in);
 
 }
 
+//starts the motor
 void motorStart(){
   STATE = MOVING;
   printState(STATE);
@@ -234,6 +234,7 @@ void motorStart(){
   motorStartTime = millis();
 }
 
+// initiates the braking
 void motorBrake(){
   STATE = BRAKING;
   printState(STATE);
@@ -242,6 +243,7 @@ void motorBrake(){
   brakeStart = millis();
 }
 
+//stops the motor
 void motorStop(){
   //release the brake
   if (direction == u) {
@@ -254,21 +256,22 @@ void motorStop(){
   digitalWrite(DIR_A, 0);//test if led B goes off
 }
 
+//calculates the up and down time now including the weekend days
 void calcUpAndDownTime(int dow){
   if (debug) Serial.print("changing times :");
   if (debug) Serial.println(dow);
   if (dow % 7== 0 || dow % 6 == 0){
-    goUpHour = 7;
+    //sun or sat
+    goUpHour = 6;
     goUpMin  = 00;
     goDownHour = 20;
-    goDownMin  = 00;
-    //sun or sat
+    goDownMin  = 30;
   } else {
     //weekdays
-    goUpHour = 7;
+    goUpHour = 6;
     goUpMin  = 00;
     goDownHour = 20;
-    goDownMin  = 00;
+    goDownMin  = 30;
   }
   goUpTime = goUpHour * 60 + goUpMin;
   goDownTime = goDownHour * 60 + goDownMin;
