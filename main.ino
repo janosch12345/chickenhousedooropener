@@ -22,20 +22,21 @@ alarm setzen auf letzes up oderd own??
 
 */
 
-//motorboard connection A
+//motorboard
 const int
 PWM_A   = 3,
 DIR_A   = 12,
 BRAKE_A = 9,
 SNS_A   = A0;
 
-//button for manual motor control
+//button
 const int buttonPin = 2;     // the number of the pushbutton pin
 int buttonState = 0;  
 boolean manualMode = false;  
 
+//
 int direction;
-// when the program is started it assumes the door is down
+
 int STATE = DOWN;
 uint8_t time[8];
 char recv[BUFF_MAX];
@@ -43,11 +44,27 @@ unsigned int recv_size = 0;
 unsigned long prev, interval = 5000;
 boolean actState;
 
+
+
 //the time settings for up and down
-int goUpHour = 6;
-int goUpMin  = 00;
-int goDownHour = 20;
-int goDownMin  = 30;
+int goUpHour;
+int goUpMin;
+int goDownHour;
+int goDownMin;
+
+//board clock runs always in summer time 
+const boolean summerTime = false;
+
+// the times are to be set depending on the actual time zone, change summerTime if not summer 
+int goUpHourWE   = 7; 
+int goUpMinWE    = 00;
+int goDownHourWE = 17;
+int goDownMinWE  = 00; 
+
+int goUpHourWD   = 7; 
+int goUpMinWD    = 00;
+int goDownHourWD = 17;
+int goDownMinWD  = 00; 
 
 //the calculated up and down times f.e. 887 ist z.B. 887 = 14(h) * 60 + 47(min) = 14:47
 int goUpTime;
@@ -66,8 +83,7 @@ unsigned long brakeStart;
 boolean debug = true;
 
 void setup()
-{
-  
+{ 
   if (debug) Serial.begin(9600);
   //clock
   Wire.begin();
@@ -79,11 +95,16 @@ void setup()
   //button
   pinMode(buttonPin, INPUT);
 
-  //calc the up and down time preset
-  goUpTime = goUpHour * 60 + goUpMin;
-  goDownTime = goDownHour * 60 + goDownMin;
+  // board is running in summertime f.e. 700
+  // now is winter time and we want to open at 900, in summer time it would be 10, so we add +1 to the hours 
+  if (!summerTime){
+    goUpHourWD = goUpHourWD + 1;
+    goUpHourWE = goUpHourWE + 1;
+    goDownHourWD = goDownHourWD + 1;
+    goDownHourWE = goDownHourWE + 1;
+  }
 
-  //assume we are always down on start so last direction was d
+//assume we are always down on start so last direction was d
   direction = d;
 
 }
@@ -130,7 +151,7 @@ void loop()
             manualMode = false;
             direction = u;
           } else { //STATE ist DOWN
-            //door is down because we did override ok.
+            //es ist unten weil wir overrided haben also alles gut
           }
         
         } else {
@@ -193,10 +214,10 @@ void loop()
   }
 
 /*
-//if we want to set the time to the clock uncomment the following
+
   if (Serial.available() > 0) {
     in = Serial.read();
-    Serial.println(in);
+Serial.println(in);
     if ((in == 10 || in == 13) && (recv_size > 0)) {
       Serial.println("parse");
       parse_cmd(recv, recv_size);
@@ -221,7 +242,6 @@ void loop()
 
 }
 
-//starts the motor
 void motorStart(){
   STATE = MOVING;
   printState(STATE);
@@ -234,7 +254,6 @@ void motorStart(){
   motorStartTime = millis();
 }
 
-// initiates the braking
 void motorBrake(){
   STATE = BRAKING;
   printState(STATE);
@@ -243,7 +262,6 @@ void motorBrake(){
   brakeStart = millis();
 }
 
-//stops the motor
 void motorStop(){
   //release the brake
   if (direction == u) {
@@ -256,22 +274,21 @@ void motorStop(){
   digitalWrite(DIR_A, 0);//test if led B goes off
 }
 
-//calculates the up and down time now including the weekend days
 void calcUpAndDownTime(int dow){
   if (debug) Serial.print("changing times :");
   if (debug) Serial.println(dow);
   if (dow % 7== 0 || dow % 6 == 0){
-    //sun or sat
-    goUpHour = 6;
-    goUpMin  = 00;
-    goDownHour = 20;
-    goDownMin  = 30;
+    //sun or sat weekend WE
+    goUpHour   = goUpHourWE; 
+    goUpMin    = goUpMinWE; 
+    goDownHour = goDownHourWE;
+    goDownMin  = goDownMinWE; 
   } else {
-    //weekdays
-    goUpHour = 6;
-    goUpMin  = 00;
-    goDownHour = 20;
-    goDownMin  = 30;
+    //weekdays WD
+    goUpHour   = goUpHourWD; 
+    goUpMin    = goUpMinWD; 
+    goDownHour = goDownHourWD;
+    goDownMin  = goDownMinWD; 
   }
   goUpTime = goUpHour * 60 + goUpMin;
   goDownTime = goDownHour * 60 + goDownMin;
@@ -291,6 +308,9 @@ void printDirection(){
 void printUpDownTime(){
   if (debug){
     Serial.println("=========================");
+    if (!summerTime){
+      Serial.println("!WINTERTIME mode -1 hour to all values is the time the door actually moves");
+    }
     Serial.print("goUpTime   : ");
     if (goUpHour < 10) {Serial.print("0");}
     Serial.print(goUpHour);
